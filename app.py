@@ -263,14 +263,6 @@ def correct_province(prov_str):
 def preprocess_input(input_dict):
     input_df = pd.DataFrame([input_dict])
 
-
-
-
-
-
-
-
-
     input_df['company_name_len'] = input_df['companyInfo.companyName'].astype(str).apply(len)
     input_df['is_limited'] = input_df['companyInfo.companyName'].astype(str).str.contains('有限公司|有限责任公司', na=False).astype(int)
     input_df['is_individual'] = input_df['companyInfo.companyName'].astype(str).str.contains('个体经营|个人工作室', na=False).astype(int)
@@ -336,7 +328,6 @@ def preprocess_input(input_dict):
             input_df[col] = pd.to_numeric(input_df[col], errors='coerce').fillna(0)
     # 确保所有列最终为浮点数（模型通常接受浮点数）
     input_df[col] = input_df[col].astype(float)
-
 
 
 
@@ -505,6 +496,13 @@ if st.button(" 预测", use_container_width=True, type="primary"):
                     background = X_train_bg.sample(n=100, random_state=42)
                 except:
                     background = X_input.iloc[:1]
+
+                # 调试代码（可选）
+                # st.write("### 输入数据检查")
+                # for col in X_input.columns:
+                #     val = X_input.iloc[0][col]
+                #     st.write(f"{col}: {val} (类型: {type(val)})")
+
                 explainer = shap.LinearExplainer(model, background)
                 shap_values = explainer.shap_values(X_input)
                 base_value = explainer.expected_value
@@ -521,6 +519,7 @@ if st.button(" 预测", use_container_width=True, type="primary"):
             else:
                 explainer = shap.TreeExplainer(model)
                 shap_values = explainer.shap_values(X_input)
+                # 处理多分类输出（取正类）
                 if isinstance(shap_values, list):
                     shap_values = shap_values[1]
                 if shap_values.ndim == 2:
@@ -531,6 +530,8 @@ if st.button(" 预测", use_container_width=True, type="primary"):
                     base_value = explainer.expected_value[1]
                 else:
                     base_value = explainer.expected_value
+                # 裁剪异常值，防止绘图溢出
+                shap_values_single = np.clip(shap_values_single, -10, 10)
                 exp = shap.Explanation(values=shap_values_single,
                                         base_values=base_value,
                                         data=X_input.iloc[0].values,
