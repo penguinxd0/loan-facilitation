@@ -18,8 +18,8 @@ dist/
 
 # 数据文件（CSV）
 data/
-data_now/*.csv
-*.csv
+# data_now/*.csv
+# *.csv
 
 # 环境变量
 .env
