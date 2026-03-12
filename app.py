@@ -257,9 +257,19 @@ def correct_province(prov_str):
             return std
     return np.nan
 
+
+
 # ---------- 特征工程函数 ----------
 def preprocess_input(input_dict):
     input_df = pd.DataFrame([input_dict])
+
+
+
+
+
+
+
+
 
     input_df['company_name_len'] = input_df['companyInfo.companyName'].astype(str).apply(len)
     input_df['is_limited'] = input_df['companyInfo.companyName'].astype(str).str.contains('有限公司|有限责任公司', na=False).astype(int)
@@ -316,6 +326,21 @@ def preprocess_input(input_dict):
         if col not in input_df.columns:
             input_df[col] = 0
     input_df = input_df[FEATURE_NAMES]
+
+
+
+    # # 在 preprocess_input 函数返回前添加：
+    # for col in input_df.columns:
+    #     # 如果列的类型是 object，尝试转换为数值，无法转换的填充 0
+    #     if input_df[col].dtype == 'object':
+    #         input_df[col] = pd.to_numeric(input_df[col], errors='coerce').fillna(0)
+    # # 确保所有列最终为浮点数（模型通常接受浮点数）
+    # input_df[col] = input_df[col].astype(float)
+
+
+
+
+
 
     return input_df
 
