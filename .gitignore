@@ -1,0 +1,33 @@
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 虚拟环境
+loan_env/
+env/
+venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# 打包产物
+build/
+dist/
+*.spec
+
+# 数据文件（CSV）
+data/
+data_now/*.csv
+*.csv
+
+# 环境变量
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# 其他临时文件
+*.log
+*.tmp

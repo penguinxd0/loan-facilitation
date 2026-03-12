@@ -1,0 +1,102 @@
+{
+  "partner_code": {
+    "AWJ_CODE": 0,
+    "FZ_CODE": 1,
+    "HXQB_CODE": 2,
+    "JY_CODE": 3,
+    "LXJ_CODE": 4,
+    "LYX_CODE": 5,
+    "RONG_CODE": 6,
+    "XYF_CODE": 7,
+    "YXM_CODE": 8
+  },
+  "companyInfo.industry": {
+    "A": 0,
+    "C": 1,
+    "D": 2,
+    "E": 3,
+    "F": 4,
+    "G": 5,
+    "H": 6,
+    "I": 7,
+    "J": 8,
+    "K": 9,
+    "L": 10,
+    "M": 11,
+    "N": 12,
+    "O": 13,
+    "P": 14,
+    "Q": 15,
+    "R": 16,
+    "S": 17,
+    "Z": 18
+  },
+  "customerSource": {
+    "APP": 0,
+    "XCX": 1
+  },
+  "linkmanList.0.relationship": {
+    "CHILDREN": 0,
+    "COLLEAGUE": 1,
+    "FATHER": 2,
+    "FRIENDS": 3,
+    "MATE": 4,
+    "MOTHER": 5,
+    "OTHER": 6,
+    "PARENTS": 7,
+    "RELATIVES": 8,
+    "SIBLING": 9
+  },
+  "linkmanList.1.relationship": {
+    "CHILDREN": 0,
+    "COLLEAGUE": 1,
+    "FATHER": 2,
+    "FRIENDS": 3,
+    "MATE": 4,
+    "MOTHER": 5,
+    "OTHER": 6,
+    "PARENTS": 7,
+    "RELATIVES": 8,
+    "SIBLING": 9
+  },
+  "province": {
+    "上海市": 0,
+    "云南省": 1,
+    "内蒙古自治区": 2,
+    "北京市": 3,
+    "吉林省": 4,
+    "四川省": 5,
+    "天津市": 6,
+    "宁夏回族自治区": 7,
+    "安徽省": 8,
+    "山东省": 9,
+    "山西省": 10,
+    "广东省": 11,
+    "广西壮族自治区": 12,
+    "新疆维吾尔自治区": 13,
+    "江苏省": 14,
+    "江西省": 15,
+    "河北省": 16,
+    "河南省": 17,
+    "浙江省": 18,
+    "海南省": 19,
+    "湖北省": 20,
+    "湖南省": 21,
+    "甘肃省": 22,
+    "福建省": 23,
+    "西藏自治区": 24,
+    "贵州省": 25,
+    "辽宁省": 26,
+    "重庆市": 27,
+    "陕西省": 28,
+    "青海省": 29,
+    "黑龙江省": 30
+  },
+  "purpose": {
+    "CONSUME": 0
+  },
+  "deviceInfo.osType": {
+    "ANDROID": 0,
+    "IOS": 1
+  }
+}
