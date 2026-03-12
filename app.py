@@ -440,17 +440,15 @@ if st.button(" 预测", use_container_width=True, type="primary"):
     st.session_state.last_model_choice = model_choice
 
     with st.spinner("正在预测并计算SHAP值..."):
+        # 对所有模型都使用缩放后的数据进行预测（因为模型都是在缩放数据上训练的）
         input_scaled = input_df.copy()
         if NUM_COLS:
             input_scaled[NUM_COLS] = scaler.transform(input_df[NUM_COLS])
 
         model = models[model_choice]
-        if model_choice == '逻辑回归 (改进)':
-            X_input = input_scaled
-        else:
-            X_input = input_df
 
-        proba = model.predict_proba(X_input)[0][1]
+        # 预测时统一使用缩放后的数据
+        proba = model.predict_proba(input_scaled)[0][1]
         pred_class = (proba >= 0.5).astype(int)
         st.session_state.last_pred_proba = proba
         st.session_state.last_pred_class = pred_class
@@ -464,23 +462,20 @@ if st.button(" 预测", use_container_width=True, type="primary"):
             background = X_train_bg.sample(n=100, random_state=42)
 
             if model_choice == '逻辑回归 (改进)':
-                # 使用 LinearExplainer，背景数据需要缩放吗？注意 LinearExplainer 内部会处理，背景数据应使用原始特征（未缩放）
-                # 逻辑回归是在缩放后的数据上训练的，但背景数据也应采用同样的缩放？这里简单起见，用缩放后的数据作为背景
-                # 但 LinearExplainer 要求背景数据和模型训练数据一致，我们用缩放后的背景
-                # 对背景数据应用相同的缩放
+                # 逻辑回归：使用 LinearExplainer，背景数据也需要缩放
                 background_scaled = background.copy()
                 if NUM_COLS:
                     background_scaled[NUM_COLS] = scaler.transform(background[NUM_COLS])
                 explainer = shap.LinearExplainer(model, background_scaled)
-                shap_values = explainer.shap_values(X_input)
+                shap_values = explainer.shap_values(input_scaled)   # 传入缩放后的数据
                 base_value = explainer.expected_value
                 shap_values_single = shap_values[0]
             else:
-                # 树模型使用 TreeExplainer，不需要缩放背景
+                # 树模型（XGBoost / 随机森林）：使用 TreeExplainer，不需要缩放背景，输入数据也使用缩放后的（与预测一致）
                 explainer = shap.TreeExplainer(model)
-                shap_values = explainer.shap_values(X_input)
+                shap_values = explainer.shap_values(input_scaled)
                 if isinstance(shap_values, list):
-                    shap_values = shap_values[1]  # 取正类
+                    shap_values = shap_values[1]  # 二分类取正类
                 if shap_values.ndim == 2:
                     shap_values_single = shap_values[0]
                 else:
@@ -490,12 +485,13 @@ if st.button(" 预测", use_container_width=True, type="primary"):
                 else:
                     base_value = explainer.expected_value
 
-            # 裁剪异常值
+            # 裁剪异常值（防溢出）
             shap_values_single = np.clip(shap_values_single, -10, 10)
 
+            # 创建 Explanation 对象并绘图
             exp = shap.Explanation(values=shap_values_single,
                                     base_values=base_value,
-                                    data=X_input.iloc[0].values,
+                                    data=input_scaled.iloc[0].values,   # 使用缩放后的数据展示
                                     feature_names=FEATURE_NAMES)
             fig, ax = plt.subplots(figsize=(10, 6))
             shap.waterfall_plot(exp, show=False, max_display=15)
@@ -510,7 +506,7 @@ if st.button(" 预测", use_container_width=True, type="primary"):
         # 生成文本解释
         if shap_values_single is not None:
             try:
-                feature_values = X_input.iloc[0].values
+                feature_values = input_scaled.iloc[0].values
                 contributions = list(zip(FEATURE_NAMES, feature_values, shap_values_single))
                 contributions.sort(key=lambda x: x[2], reverse=True)
                 pos_features = [(name, val, shap) for name, val, shap in contributions if shap > 0]
@@ -547,6 +543,7 @@ if st.session_state.last_pred_proba is not None:
     else:
         st.subheader(" 特征重要性 (替代分析)")
         if st.session_state.last_model_choice == '逻辑回归 (改进)':
+            # 逻辑回归：使用系数
             model = models[st.session_state.last_model_choice]
             coef = model.coef_[0]
             feature_imp = pd.DataFrame({'特征': FEATURE_NAMES, '系数': coef})\
@@ -554,6 +551,7 @@ if st.session_state.last_pred_proba is not None:
             st.bar_chart(feature_imp.set_index('特征')['系数'])
             st.caption("正系数增加通过概率，负系数降低通过概率")
         elif hasattr(models[st.session_state.last_model_choice], 'feature_importances_'):
+            # 树模型：使用特征重要性
             model = models[st.session_state.last_model_choice]
             imp = model.feature_importances_
             feature_imp = pd.DataFrame({'特征': FEATURE_NAMES, '重要性': imp})\
@@ -583,13 +581,11 @@ if st.button(" 最佳决策", use_container_width=True, type="primary"):
             for company in companies:
                 temp_df = input_df.copy()
                 temp_df['partner_code'] = label_encoders['partner_code'].transform([company])[0]
-                if model_choice == '逻辑回归 (改进)':
-                    temp_scaled = temp_df.copy()
-                    if NUM_COLS:
-                        temp_scaled[NUM_COLS] = scaler.transform(temp_df[NUM_COLS])
-                    prob = model.predict_proba(temp_scaled)[0][1]
-                else:
-                    prob = model.predict_proba(temp_df)[0][1]
+                # 统一使用缩放后的数据预测
+                temp_scaled = temp_df.copy()
+                if NUM_COLS:
+                    temp_scaled[NUM_COLS] = scaler.transform(temp_df[NUM_COLS])
+                prob = model.predict_proba(temp_scaled)[0][1]
                 results.append((company, prob))
 
             results_df = pd.DataFrame(results, columns=['公司', '通过概率']).sort_values('通过概率', ascending=False)
