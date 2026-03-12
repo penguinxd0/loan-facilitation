@@ -329,13 +329,13 @@ def preprocess_input(input_dict):
 
 
 
-    # # 在 preprocess_input 函数返回前添加：
-    # for col in input_df.columns:
-    #     # 如果列的类型是 object，尝试转换为数值，无法转换的填充 0
-    #     if input_df[col].dtype == 'object':
-    #         input_df[col] = pd.to_numeric(input_df[col], errors='coerce').fillna(0)
-    # # 确保所有列最终为浮点数（模型通常接受浮点数）
-    # input_df[col] = input_df[col].astype(float)
+    # 在 preprocess_input 函数返回前添加：
+    for col in input_df.columns:
+        # 如果列的类型是 object，尝试转换为数值，无法转换的填充 0
+        if input_df[col].dtype == 'object':
+            input_df[col] = pd.to_numeric(input_df[col], errors='coerce').fillna(0)
+    # 确保所有列最终为浮点数（模型通常接受浮点数）
+    input_df[col] = input_df[col].astype(float)
 
 
 
