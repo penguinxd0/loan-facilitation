@@ -440,46 +440,59 @@ if st.button(" 预测", use_container_width=True, type="primary"):
     st.session_state.last_model_choice = model_choice
 
     with st.spinner("正在预测并计算SHAP值..."):
-        # 对所有模型都使用缩放后的数据进行预测（因为模型都是在缩放数据上训练的）
+        # 对所有模型都使用缩放后的数据进行预测
         input_scaled = input_df.copy()
         if NUM_COLS:
             input_scaled[NUM_COLS] = scaler.transform(input_df[NUM_COLS])
 
+        # 强制转换为浮点数，防止字符串残留
+        input_scaled = input_scaled.apply(pd.to_numeric, errors='coerce').fillna(0).astype(float)
+
         model = models[model_choice]
 
-        # 预测时统一使用缩放后的数据
+        # 预测
         proba = model.predict_proba(input_scaled)[0][1]
         pred_class = (proba >= 0.5).astype(int)
         st.session_state.last_pred_proba = proba
         st.session_state.last_pred_class = pred_class
 
-        # SHAP 解释
+        # ========== SHAP 解释（修复版本）==========
         try:
-            # 加载背景数据（训练集样本）
+            # 加载背景数据
             base_path = os.path.dirname(__file__)
             data_path = os.path.join(base_path, 'data_now')
             X_train_bg = pd.read_csv(os.path.join(data_path, 'X_train.csv'))
             background = X_train_bg.sample(n=100, random_state=42)
 
             if model_choice == '逻辑回归 (改进)':
-                # 逻辑回归：使用 LinearExplainer，背景数据也需要缩放
+                # 逻辑回归：使用 LinearExplainer
                 background_scaled = background.copy()
                 if NUM_COLS:
                     background_scaled[NUM_COLS] = scaler.transform(background[NUM_COLS])
+                background_scaled = background_scaled.apply(pd.to_numeric, errors='coerce').fillna(0).astype(float)
                 explainer = shap.LinearExplainer(model, background_scaled)
-                shap_values = explainer.shap_values(input_scaled)   # 传入缩放后的数据
+                shap_values = explainer.shap_values(input_scaled)  # 形状 (n_samples, n_features)
+                shap_values_single = shap_values[0]                 # 取第一个样本
                 base_value = explainer.expected_value
-                shap_values_single = shap_values[0]
             else:
-                # 树模型（XGBoost / 随机森林）：使用 TreeExplainer，不需要缩放背景，输入数据也使用缩放后的（与预测一致）
+                # 树模型：使用 TreeExplainer
                 explainer = shap.TreeExplainer(model)
                 shap_values = explainer.shap_values(input_scaled)
+
+                # 处理不同版本的 shap 返回值
                 if isinstance(shap_values, list):
-                    shap_values = shap_values[1]  # 二分类取正类
-                if shap_values.ndim == 2:
+                    # 旧版本：列表 [array(class0), array(class1)]，每个形状 (n_samples, n_features)
+                    shap_values_single = shap_values[1][0]          # 取正类的第一个样本
+                elif shap_values.ndim == 3:
+                    # 新版本：三维数组 (n_outputs, n_samples, n_features)
+                    shap_values_single = shap_values[1, 0, :]       # 取第一个样本的正类
+                elif shap_values.ndim == 2:
+                    # 单输出情况（极少）
                     shap_values_single = shap_values[0]
                 else:
-                    shap_values_single = shap_values
+                    shap_values_single = shap_values  # 兜底
+
+                # 获取 base_value
                 if isinstance(explainer.expected_value, (list, np.ndarray)):
                     base_value = explainer.expected_value[1]
                 else:
@@ -488,11 +501,16 @@ if st.button(" 预测", use_container_width=True, type="primary"):
             # 裁剪异常值（防溢出）
             shap_values_single = np.clip(shap_values_single, -10, 10)
 
-            # 创建 Explanation 对象并绘图
+            # 确保 data 是一维数值数组
+            data_vals = input_scaled.iloc[0].values.astype(float)
+
+            # 创建 Explanation 对象
             exp = shap.Explanation(values=shap_values_single,
                                     base_values=base_value,
-                                    data=input_scaled.iloc[0].values,   # 使用缩放后的数据展示
+                                    data=data_vals,
                                     feature_names=FEATURE_NAMES)
+
+            # 绘制瀑布图
             fig, ax = plt.subplots(figsize=(10, 6))
             shap.waterfall_plot(exp, show=False, max_display=15)
             st.session_state.last_shap_fig = fig
@@ -543,7 +561,6 @@ if st.session_state.last_pred_proba is not None:
     else:
         st.subheader(" 特征重要性 (替代分析)")
         if st.session_state.last_model_choice == '逻辑回归 (改进)':
-            # 逻辑回归：使用系数
             model = models[st.session_state.last_model_choice]
             coef = model.coef_[0]
             feature_imp = pd.DataFrame({'特征': FEATURE_NAMES, '系数': coef})\
@@ -551,7 +568,6 @@ if st.session_state.last_pred_proba is not None:
             st.bar_chart(feature_imp.set_index('特征')['系数'])
             st.caption("正系数增加通过概率，负系数降低通过概率")
         elif hasattr(models[st.session_state.last_model_choice], 'feature_importances_'):
-            # 树模型：使用特征重要性
             model = models[st.session_state.last_model_choice]
             imp = model.feature_importances_
             feature_imp = pd.DataFrame({'特征': FEATURE_NAMES, '重要性': imp})\
@@ -581,10 +597,10 @@ if st.button(" 最佳决策", use_container_width=True, type="primary"):
             for company in companies:
                 temp_df = input_df.copy()
                 temp_df['partner_code'] = label_encoders['partner_code'].transform([company])[0]
-                # 统一使用缩放后的数据预测
                 temp_scaled = temp_df.copy()
                 if NUM_COLS:
                     temp_scaled[NUM_COLS] = scaler.transform(temp_df[NUM_COLS])
+                temp_scaled = temp_scaled.apply(pd.to_numeric, errors='coerce').fillna(0).astype(float)
                 prob = model.predict_proba(temp_scaled)[0][1]
                 results.append((company, prob))
 
